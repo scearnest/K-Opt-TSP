@@ -140,6 +140,12 @@ class City:
 		self._scenario	= None
 		self._index = -1
 		self._name	= None
+	
+	def copy(self):
+		city = City(self._x, self._y, self._elevation)
+		city.setIndexAndName(self._index, self._name)
+		city.setScenario(self._scenario)
+		return city
 
 	def setIndexAndName( self, index, name ):
 		self._index = index
