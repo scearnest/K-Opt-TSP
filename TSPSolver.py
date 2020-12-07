@@ -168,14 +168,25 @@ class TSPSolver:
 
 		results = {}
 		self.num_cities = len(self._scenario.getCities())
-		start_time = time.time()
+		self.start_time = time.time()
 		self.new_solutions_found = 0
+		self.time_allowance = time_allowance
 
-		# Define number of cities to swap in a route (k <= n - 3) and (k >= 2)
-		k = 2
+		# Define number of cities to swap in a route
+		# As k increases, the solution optimality and time complexity both increase
+		if self.num_cities <= 9 and self.num_cities >= 5:
+			k = self.num_cities - 3
+		elif self.num_cities <= 15:
+			k = 5
+		elif self.num_cities <= 25:
+			k = 4
+		elif self.num_cities <= 75:
+			k = 3
+		else:
+			k = 2
 
 		self.improved = True
-		while self.improved and time.time() - start_time < time_allowance:
+		while self.improved:
 			self.improved = False
 			for i in range(self.num_cities):
 				# Check all combinations of k cities swaped to see if route has improved
@@ -184,7 +195,7 @@ class TSPSolver:
 						
 		end_time = time.time()
 		results['cost'] = self.bssf.cost
-		results['time'] = end_time - start_time
+		results['time'] = end_time - self.start_time
 		results['count'] = self.new_solutions_found
 		results['soln'] = self.bssf
 		results['max'] = 0
@@ -193,7 +204,12 @@ class TSPSolver:
 		return results
 
 
+
 	def kOptSwap(self, route, k, i):
+		# Check time allowance
+		if time.time() - self.start_time > self.time_allowance:
+			return
+
 		if k > 1:
 			# Make new routes by swapping different combinations 2 cities
 			for j in range(self.num_cities):
@@ -207,9 +223,8 @@ class TSPSolver:
 			if new_solution.cost < self.bssf.cost:
 				self.improved = True
 				self.bssf = new_solution
-				self.best_route = route
-				print('Updated BSSF: ' + str(self.bssf.cost))
 				self.new_solutions_found += 1
+				print('Updated BSSF: ' + str(self.bssf.cost))
 			
 	
 	# Swap 2 cities in a route
