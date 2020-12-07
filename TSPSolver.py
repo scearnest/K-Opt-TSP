@@ -16,6 +16,8 @@ import numpy as np
 from TSPClasses import *
 import heapq
 import itertools
+import random
+
 
 
 
@@ -88,7 +90,6 @@ class TSPSolver:
 		count = 0
 		bssf = None
 		start_time = time.time()
-		best_route = None
 
 		while not foundTour and time.time() - start_time < time_allowance:
 
@@ -120,7 +121,6 @@ class TSPSolver:
 				# Make sure it found a complete soution back to the start
 				if not no_solution and route[-1].costTo(route[0]) < math.inf:
 					foundTour = True
-					best_route = route
 					bssf = TSPSolution(route)
 					count += 1
 					break
@@ -131,7 +131,6 @@ class TSPSolver:
 		results['time'] = end_time - start_time
 		results['count'] = count
 		results['soln'] = bssf
-		results['route'] = best_route
 		results['max'] = None
 		results['total'] = None
 		results['pruned'] = None
@@ -162,44 +161,58 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 	
-	# K-Opt
 	def fancy( self,time_allowance=60.0 ):
 		# Use greedy algorithm to find a initial tour
 		greedy_solution = self.greedy(time_allowance)
-		bssf = greedy_solution['soln']
-		best_route = bssf.route.copy()
+		self.bssf = greedy_solution['soln']
 
 		results = {}
-		num_cities = len(self._scenario.getCities())
+		self.num_cities = len(self._scenario.getCities())
 		start_time = time.time()
-		count = 0
+		self.new_solutions_found = 0
 
-		improved = True
-		while improved:
-			improved = False
-			for i in range(num_cities - 3):
-				for j in range(i + 2, num_cities-1):
-					#Swap nodes i and j and create solution
-					new_route = self.twoOptSwap(best_route, i, j)
-					new_solution = TSPSolution(new_route)
-					#Check if solution is better than previous solution, if so update
-					if new_solution.cost < bssf.cost:
-						improved = True
-						bssf = new_solution
-						best_route = new_route
-						print('updated')
-	
+		# Define number of cities to swap in a route (k <= n - 3) and (k >= 2)
+		k = 2
+
+		self.improved = True
+		while self.improved and time.time() - start_time < time_allowance:
+			self.improved = False
+			for i in range(self.num_cities):
+				# Check all combinations of k cities swaped to see if route has improved
+				self.kOptSwap(self.bssf.route, k, i)
+
 						
 		end_time = time.time()
-		results['cost'] = bssf.cost
+		results['cost'] = self.bssf.cost
 		results['time'] = end_time - start_time
-		results['count'] = count
-		results['soln'] = bssf
+		results['count'] = self.new_solutions_found
+		results['soln'] = self.bssf
 		results['max'] = 0
 		results['total'] = 0
 		results['pruned'] = 0
 		return results
+
+
+	def kOptSwap(self, route, k, i):
+		if k > 1:
+			# Make new routes by swapping different combinations 2 cities
+			for j in range(self.num_cities):
+				new_route = self.twoOptSwap(route, i, j)
+				# Keep swaping cities in route until k cities have been swaped 
+				self.kOptSwap(new_route, k - 1, j)
+
+		else :
+			# Check if solution is better than best solution so far, if so update
+			new_solution = TSPSolution(route)
+			if new_solution.cost < self.bssf.cost:
+				self.improved = True
+				self.bssf = new_solution
+				self.best_route = route
+				print('Updated BSSF: ' + str(self.bssf.cost))
+				self.new_solutions_found += 1
+			
 	
+	# Swap 2 cities in a route
 	def twoOptSwap(self, route, i, k):
 		a = route[0:i]
 		b = route[i:k+1]
@@ -207,53 +220,3 @@ class TSPSolver:
 		c = route[k+1:]
 		new_route = a + b + c
 		return new_route
-		
-
-	# def fancy( self,time_allowance=60.0 ):
-	# 	# Use greedy algorithm to find a initial tour
-	# 	greedy_solution = self.greedy(time_allowance)
-	# 	bssf = greedy_solution['soln']
-	# 	best_route = greedy_solution['route']
-
-	# 	results = {}
-	# 	cities = self._scenario.getCities().copy()
-	# 	num_cities = len(cities)
-	# 	start_time = time.time()
-	# 	count = 0
-
-	# 	min_change = -1
-	# 	while min_change < 0:
-	# 		min_change = 0
-	# 		for i in range(num_cities - 3):
-	# 			for j in range(i + 2, num_cities-1):
-	# 				# Calculate cost difference to swap 2 edges
-	# 				change = best_route[i].costTo(best_route[j]) + best_route[i+1].costTo(best_route[j+1]) - best_route[i].costTo(best_route[i+1]) - best_route[j].costTo(best_route[j+1])
-	# 				# Update best cities indexes to swap
-	# 				if min_change > change and change != -math.inf:
-	# 					min_change = change
-	# 					city_a = i+1
-	# 					city_b = j
-			
-	# 		if (min_change < 0):
-	# 			# Swap cities
-	# 			new_route = best_route.copy()
-	# 			new_route[city_a], new_route[city_b] = best_route[city_b], best_route[city_a]
-
-	# 			solution = TSPSolution(new_route)
-	# 			print(str(min_change) + " / " + str(solution.cost) + " / "+ str(bssf.cost))
-	# 			if solution.cost < bssf.cost:
-	# 				print("Updating bssf: " + str(bssf.cost))
-	# 				best_route = new_route.copy()
-						
-	# 	end_time = time.time()
-	# 	results['cost'] = bssf.cost
-	# 	results['time'] = end_time - start_time
-	# 	results['count'] = count
-	# 	results['soln'] = bssf
-	# 	results['max'] = 0
-	# 	results['total'] = 0
-	# 	results['pruned'] = 0
-	# 	return results
-		
-
-
