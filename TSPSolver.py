@@ -179,9 +179,10 @@ class TSPSolver:
 			improved = False
 			for i in range(num_cities - 3):
 				for j in range(i + 2, num_cities-1):
+					#Swap nodes i and j and create solution
 					new_route = self.twoOptSwap(best_route, i, j)
 					new_solution = TSPSolution(new_route)
-
+					#Check if solution is better than previous solution, if so update
 					if new_solution.cost < bssf.cost:
 						improved = True
 						bssf = new_solution
@@ -198,7 +199,7 @@ class TSPSolver:
 		results['total'] = 0
 		results['pruned'] = 0
 		return results
-
+	
 	def twoOptSwap(self, route, i, k):
 		a = route[0:i]
 		b = route[i:k+1]
