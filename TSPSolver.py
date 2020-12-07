@@ -17,6 +17,7 @@ from TSPClasses import *
 import heapq
 import itertools
 import random
+from copy import deepcopy
 
 
 
@@ -138,6 +139,83 @@ class TSPSolver:
 	
 	
 	
+	# BEGIN BRANCH AND BOUND CODE
+
+	def printMatrix(self, arr):
+		for row in range( len(arr) ):
+			for col in range( len(arr[row]) ):
+				
+				print("{:4.0f}".format(arr[row][col]), end=' ')
+			print()
+		print()
+	
+	# Uses the list of cities to generate a 2d matrix of travel costs
+	# Iterates over each city,city pair once, creating an N^2 matrix
+	# TIME: 2 * N^2 = N^2 (the 2 comes from initializing the array)
+	# SPACE: N^2
+	def generateMatrix(self, cityList, cNum):
+		cities = [[float('inf') for i in range(cNum)] for j in range(cNum)]
+
+		for row in range(cNum):
+			for col in range(cNum):
+				if row == col: continue
+				cities[row][col] = cityList[row].costTo(cityList[col])
+
+		# self.printMatrix(cities)
+		return cities
+
+	# Takes in a city matrix and calculates the lower bound value
+	# Returns the lower bound cost and the update city matrix
+	# Iterates over each row of the grid twice, then each col twice
+	# TIME: 4 * N^2 = N^2
+	# SPACE: Works in place, uses the pre-existing N^2 matrix
+	def calcLowerBound(self, mat):
+		minCost = 0
+		for row in range( len(mat) ):
+			low = float('inf')
+			for col in range( len(mat[row]) ):
+				low = min(low, mat[row][col])
+			
+			if low == float('inf'): continue
+			
+			minCost += low
+			for col in range( len(mat[row]) ):
+				mat[row][col] -= low
+		
+		for col in range( len(mat) ):
+			low = float('inf')
+			for row in range( len(mat[row]) ):
+				low = min(low, mat[row][col])
+			
+			if low == float('inf'): continue
+
+			minCost += low
+			for row in range( len(mat[row]) ):
+				mat[row][col] -= low
+
+		return minCost, mat
+
+	# Calculates the additional costs related to travelling
+	# from the source city to destination city in given matrix
+	# Iterates across N long row, then down N long column
+	# Calls the N^2 time lower bound update
+	# TIME: N^2 because of bound update
+	# SPACE: Works in place
+	def calcChild(self, cities, source, dest):
+		# print("calcChild", source, "->", dest)
+		if cities[source][dest] == float('inf'): return float('inf'), None
+
+		travelCost = cities[source][dest]
+		for row in range( len(cities) ):
+			cities[row][dest] = float('inf')
+		for col in range( len(cities) ):
+			cities[source][col] = float('inf')
+
+		cities[dest][source] = float('inf')
+		bound, cities = self.calcLowerBound(cities) # N^2 time
+
+		return travelCost + bound, cities
+	
 	''' <summary>
 		This is the entry point for the branch-and-bound algorithm that you will implement
 		</summary>
@@ -148,7 +226,85 @@ class TSPSolver:
 	'''
 		
 	def branchAndBound( self, time_allowance=60.0 ):
-		pass
+		results = {}
+		cities = self._scenario.getCities()
+		ncities = len(cities)
+		bssf = None
+		start_time = time.time()
+
+		_statesGenerated = 0
+		_statesPruned = 0
+		_bssfUpdates = 0
+		_queueMaxLength = 0
+
+		# Worst Case N^N if it tries every random shape
+		# Realistic: ~N time to populate a list
+		# Space: N long array is discarded
+		bssfCost = self.defaultRandomTour()['cost']
+		# print("Random Cost:", bssfCost)
+
+		# Generates a N^2 matrix using in N^2 time
+		cityMat = self.generateMatrix(cities, ncities)
+		minCost, cityMat = self.calcLowerBound(cityMat)
+
+		q = []
+		route = [cities[0]]
+		# self.printMatrix(cityMat)
+
+		# According to slides, heap push is O(Log N)
+		heapq.heappush(q, bbState(route, 0, cityMat, minCost))
+
+		while q and (time.time() - start_time < time_allowance):
+			_queueMaxLength = max(_queueMaxLength, len(q))
+
+			# According to slides, heap pop is O(Log N)
+			state = heapq.heappop(q)
+
+			if state.lowerBound > bssfCost: 
+				_statesPruned += 1
+				continue
+
+			if len(state.route) == ncities:
+				bssf = TSPSolution(state.route)
+				bssfCost = state.lowerBound
+				_bssfUpdates += 1
+				continue
+
+			# Worst Case: N-1 Cities to expand, Log N average
+			# Worse Case: N-1 Matricies to generate, Log N average
+			# Overall Log N * N^2 operations in time and space
+			# In practice, value will be smaller due to timeout and pruning
+			for destination in cities:
+				if destination not in state.route:
+					dest = destination._index
+					_statesGenerated += 1
+					# print("Generate Child:", dest)
+					childRoute = state.route.copy() # N time and space
+					childRoute.append(cities[dest]) 
+					childCities = deepcopy(state.cityMatrix) # N^2 Time and Space
+
+					# calcChild is an N^2 Time, 1 Space function
+					additionalCost, childCities = self.calcChild(childCities, childRoute[-2]._index, dest)
+					childCost = state.lowerBound + additionalCost
+					if childCost < bssfCost:
+						# print("Inject Child:", dest)
+						#Push is O(Log N)
+						heapq.heappush(q, bbState(childRoute, state.depth+1, childCities, childCost))
+					else:
+						_statesPruned += 1
+
+		_statesPruned += len(q)
+
+		end_time = time.time()
+		results['time'] = end_time - start_time
+		results['soln'] = bssf
+		results['cost'] = bssfCost
+		results['count'] = _bssfUpdates
+		results['max'] = _queueMaxLength
+		results['total'] = _statesGenerated
+		results['pruned'] = _statesPruned
+		# print("Done")
+		return results
 
 
 

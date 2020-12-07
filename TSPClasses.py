@@ -7,6 +7,17 @@ import random
 import time
 
 
+class bbState:
+	def __init__(self, path, currDepth, citySquare, cost):
+		self.route = path
+		self.depth = currDepth
+		self.cityMatrix = citySquare
+		self.lowerBound = cost
+
+		self.queueKey = self.lowerBound / ((self.depth + 1) * 5)
+
+	def __lt__(self, other):
+		return self.queueKey < other.queueKey
 
 class TSPSolution:
 	def __init__( self, listOfCities):
