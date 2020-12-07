@@ -179,33 +179,16 @@ class TSPSolver:
 			improved = False
 			for i in range(num_cities - 3):
 				for j in range(i + 2, num_cities-1):
+					new_route = self.twoOptSwap(best_route, i, j)
+					new_solution = TSPSolution(new_route)
 
-					# Calculate cost of the two swap edges
-					a_swap_cost = best_route[i].costTo(best_route[j])
-					b_swap_cost = best_route[i+1].costTo(best_route[j+1])
-					# Calculate cost of the two original edges
-					a_cost = best_route[i].costTo(best_route[i+1])
-					b_cost = best_route[j].costTo(best_route[j+1])
-
-					# Calculate difference in cost between swap and original edges
-					change = a_swap_cost + b_swap_cost - a_cost - b_cost
-
-					# If swap is cheaper check if route is cheaper 
-					if change < 0:
+					if new_solution.cost < bssf.cost:
 						improved = True
-						# Make the swap on the route
-						best_route[i+1], best_route[j] = best_route[j], best_route[i+1]
-						new_route = TSPSolution(best_route)
-						#Check if new route is cheaper
-						if bssf.cost > new_route.cost:
-							print("From " + str(bssf.cost) + " at " + str(i) + str(j))
-							bssf = new_route
-							print("to " + str(bssf.cost))
-							break 
-							#Return to while	
+						bssf = new_solution
+						best_route = new_route
+						print('updated')
+	
 						
-						
-								
 		end_time = time.time()
 		results['cost'] = bssf.cost
 		results['time'] = end_time - start_time
