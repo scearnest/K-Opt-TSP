@@ -85,49 +85,66 @@ class TSPSolver:
 	'''
 
 	def greedy( self,time_allowance=60.0 ):
+
 		cities = self._scenario.getCities()
-		num_cities = len(cities)
-		foundTour = False
+		ncities = len(cities)
+		best_cost = math.inf
 		count = 0
-		bssf = None
-		start_time = time.time()
-
-		while not foundTour and time.time() - start_time < time_allowance:
-
-			# Try to find a greedy tour starting from each city O(n)
-			for i in range(num_cities):
-				route = []
-				cities_left = self._scenario.getCities().copy()
-				route.append(cities_left[i])
-				cities_left.remove(cities_left[i])
-				no_solution = False
-				
-				# Find and add the closest city to the route for each city O(n)
-				while len(cities_left) > 0 and not no_solution: 
-					shortest_dist = math.inf
-					closest_city = None
-					# Find the closest city O(n)
-					for city in cities_left:
-						if route[-1].costTo(city) < shortest_dist:
-							shortest_dist = route[-1].costTo(city)
-							closest_city = city
-					
-					# Add closest city to the tour if there is one available
-					if closest_city is not None:
-						route.append(closest_city)
-						cities_left.remove(closest_city)
-					else:
-						no_solution = True
-
-				# Make sure it found a complete soution back to the start
-				if not no_solution and route[-1].costTo(route[0]) < math.inf:
-					foundTour = True
-					bssf = TSPSolution(route)
-					count += 1
-					break
-				
-		end_time = time.time()
 		results = {}
+		foundTour = False
+		best_route = []
+		start_time = time.time()
+		
+		
+		#Run greedy ncities time starting with new city each time and take best 
+		#Each iteration is O(n^2)
+		for start_city in cities:
+			total_cost = 0
+			current_city = start_city
+			route = []
+			remaining_cites = cities.copy()
+			remaining_cites.remove(start_city)
+			route.append(start_city)
+
+
+			#Travel from city to city completing a path - O(n)
+			while remaining_cites:
+				#Initialize least cost to inifinity
+				least_cost = math.inf
+				least_cost_city = None
+				#Check all path options for current city - O(n)
+				for option in remaining_cites:
+					cost = current_city.costTo(option)
+					if cost < least_cost:
+						least_cost = cost
+						least_cost_city = option
+				#Check if route could not be completed and update current city
+				if least_cost != math.inf:
+					remaining_cites.remove(least_cost_city)
+					route.append(least_cost_city)
+					total_cost = total_cost + least_cost
+					current_city = least_cost_city
+				else:
+					total_cost = math.inf
+					remaining_cites = []
+			
+			#Check if route could not be completed and update cost
+			if total_cost != math.inf:
+				total_cost = total_cost + route[ncities-1].costTo(start_city)
+			count = count + 1
+			#Check for best route so far and update
+			if total_cost < best_cost:
+				best_cost = total_cost
+				best_route = route
+		
+		#Check if we found a complete route
+		if best_cost != math.inf:
+			foundTour = True
+
+		end_time = time.time()
+
+		#Create return variables
+		bssf = TSPSolution(best_route)
 		results['cost'] = bssf.cost if foundTour else math.inf
 		results['time'] = end_time - start_time
 		results['count'] = count
@@ -135,7 +152,9 @@ class TSPSolver:
 		results['max'] = None
 		results['total'] = None
 		results['pruned'] = None
+			
 		return results
+
 	
 	
 	
