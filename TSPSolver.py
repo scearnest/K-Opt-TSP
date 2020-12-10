@@ -259,7 +259,7 @@ class TSPSolver:
 		# Worst Case N^N if it tries every random shape
 		# Realistic: ~N time to populate a list
 		# Space: N long array is discarded
-		bssfCost = self.defaultRandomTour()['cost']
+		bssfCost = self.greedy()['cost']
 		# print("Random Cost:", bssfCost)
 
 		# Generates a N^2 matrix using in N^2 time
